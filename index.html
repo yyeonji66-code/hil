@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>AI와 Human in the Loop — 탐구 프로젝트</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <h1>AI는 완벽한가?</h1>
+        <p class="subtitle">AI가 만든 정보와 인간의 검증 과정이 정보 신뢰성에 어떤 영향을 미치는지 직접 실험해보세요.</p>
+      </div>
+    </header>
+
+    <main class="container main-grid">
+      <!-- 정의 카드 (1) -->
+      <section class="card" id="def-card">
+        <h2>휴먼 인 더 루프 정의</h2>
+        <p>AI 결과를 사람이 검토해 오류를 줄이는 방식.</p>
+      </section>
+
+      <!-- Simulation card (moved after HITL) -->
+      <section class="card" id="simulation-card">
+        <h2>시뮬레이션 (선택)</h2>
+        <p style="color:#94a3b8">AI가 틀렸을 때 사람이 얼마나 잘 보완하느냐에 따라 결과가 달라집니다.</p>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label>시뮬레이션 회수: <input id="simRounds" type="number" min="100" max="100000" step="100" value="1000" style="width:140px"></label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <label>AI 정확도(%): <input id="pairAi" type="number" min="0" max="100" value="60" style="width:80px"></label>
+            <label>사람 교정 확률(%): <input id="pairHuman" type="number" min="0" max="100" value="70" style="width:80px"></label>
+            <button id="runPair" class="primary">계산</button>
+            <div id="simPairResult" style="color:#94a3b8;margin-left:8px;white-space:pre-wrap"></div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button id="runBatchSim" class="primary">배치 시뮬레이션</button>
+            <div id="batchSimResult" style="color:#94a3b8;margin-left:8px;white-space:pre-wrap;font-family:monospace;font-size:13px"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 설명 카드 -->
+      <section class="card intro">
+        <h2>문제 배경</h2>
+        <p>AI 콘텐츠는 늘어나지만 때때로 잘못된 정보를 제공합니다.</p>
+      </section>
+
+      <!-- AI vs 실제 비교 (3) -->
+      <section class="card" id="compare-card">
+        <h2>AI vs 실제 비교</h2>
+        <p class="muted">아래의 두 항목 중 어떤 것이 실제(사람/진짜 자료)인지 맞춰보세요.</p>
+
+        <div class="compare-row">
+          <div class="compare-item" id="itemA">
+            <div class="media" id="mediaA">A</div>
+            <div class="controls">
+              <button class="choose" data-target="A" data-choice="ai">AI라고 생각함</button>
+              <button class="choose" data-target="A" data-choice="real">진짜라고 생각함</button>
+            </div>
+            <div class="explain" id="explainA"></div>
+          </div>
+
+          <div class="compare-item" id="itemB">
+            <div class="media" id="mediaB">B</div>
+            <div class="controls">
+              <button class="choose" data-target="B" data-choice="ai">AI라고 생각함</button>
+              <button class="choose" data-target="B" data-choice="real">진짜라고 생각함</button>
+            </div>
+            <div class="explain" id="explainB"></div>
+          </div>
+        </div>
+
+        <div class="compare-actions">
+          <button id="revealCompare">제출 및 채점 / 정답 공개</button>
+        </div>
+        <div id="scoreArea" style="margin-top:10px;color:#94a3b8"></div>
+      </section>
+
+      <!-- Human in the Loop 체험 (4) -->
+      <section class="card" id="hitl-card">
+        <h2>Human in the Loop 체험</h2>
+        <p>Human in the Loop(HITL)은 AI의 판단을 사람이 검토하고 수정하는 과정을 말합니다. 이 과정을 통해 AI의 실수(오탐, 과신)를 줄이고, 최종적으로 더 신뢰할 수 있는 결과를 얻을 수 있습니다.</p>
+
+        <div class="hitl-flow">
+          <div class="hitl-stage">
+            <h3>1) AI 먼저 판단</h3>
+            <p>AI가 먼저 분류합니다.</p>
+            <div class="ai-decision" id="aiDecision">AI: 판단 대기 중...</div>
+            <label><input type="checkbox" id="forceWrong">(연습) AI 오류 시뮬레이션</label>
+          </div>
+
+          <div class="hitl-stage">
+            <h3>2) 사람이 재판단</h3>
+            <p>사용자가 판단을 수정합니다.</p>
+            <div class="user-decision">
+              <button id="userReal">진짜</button>
+              <button id="userAi">AI</button>
+            </div>
+          </div>
+
+          <div class="hitl-stage">
+            <h3>3) 최종 검증 결과</h3>
+            <p>결과를 비교해보세요.</p>
+            <div class="final-result" id="finalResult">-</div>
+            <div class="trust-visual">
+              <div>AI-only 신뢰도: <span id="trustAi">40%</span></div>
+              <div>Human-verified 신뢰도: <span id="trustHuman">80%</span></div>
+              <svg id="trustGraph" width="100%" height="120" viewBox="0 0 300 120" aria-hidden="true" style="margin-top:8px"></svg>
+              <div style="margin-top:8px;color:#94a3b8">사람이 개입하면 신뢰도가 높아집니다.</div>
+            </div>
+          </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- quiz and verify UI merged into compare & HITL sections -->
+
+      <!-- 체크리스트 및 안내 -->
+      <!-- 실제 사례 -->
+      <section class="card" id="cases-card">
+        <h2>실제 사례</h2>
+        <div class="case">
+          <h4>딥페이크 사례</h4>
+          <p>유명인의 얼굴을 합성해 가짜 발언 영상을 만든 사례. 영상의 작은 불연속성이나 음성-입 모양 불일치가 힌트일 수 있습니다.</p>
+        </div>
+        <div class="case">
+          <h4>가짜 뉴스 사례</h4>
+          <p>잘못된 출처와 조작된 스틸 이미지로 사건을 왜곡한 사례. 원본 출처 확인이 중요합니다.</p>
+        </div>
+      </section>
+
+      <!-- 체크리스트 및 안내 -->
+      <section class="card" id="checklist-card">
+        <h2>AI 판별 방법 체크리스트</h2>
+        <ul class="checklist">
+          <li><label><input type="checkbox"> 출처 확인 (공식 사이트, 신뢰된 기관)</label></li>
+          <li><label><input type="checkbox"> 날짜/시간/메타데이터 확인</label></li>
+          <li><label><input type="checkbox"> 문장 스타일/일관성(비논리적 정보) 검토</label></li>
+          <li><label><input type="checkbox"> 교차검증(다른 출처에서 동일 정보 확인)</label></li>
+        </ul>
+        <div style="margin-top:12px;text-align:right">
+          <button id="completeBtn" class="complete-btn">완료</button>
+        </div>
+      </section>
+
+      <!-- 결론 -->
+      <section class="card conclusion">
+        <h2>결론</h2>
+        <p>AI는 강력한 도구지만, 인간의 검증 없이 완전한 신뢰를 주기 어렵습니다. Human in the Loop는 오류를 줄이고 신뢰도를 높이는 핵심 과정입니다.</p>
+         <div style="margin-top:12px;text-align:right">
+           <button id="backBtn" class="back-btn">뒤로</button>
+         </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">30513 유연지 탐구 프로젝트 — AI와 Human in the Loop</div>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
